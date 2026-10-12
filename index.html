@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<!-- 添加到主屏幕后全屏运行,没有地址栏 -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Meteor" />
+<title>Meteor Shower</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 "Helvetica Neue", "PingFang SC", sans-serif;
+  }
+
+  /* 深空渐变底 */
+  .sky {
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(120% 90% at 78% 12%, #12101f 0%, #07060d 45%, #000 100%),
+      radial-gradient(80% 60% at 15% 90%, #0a0d1a 0%, transparent 70%);
+  }
+
+  /* 轻微雾感颗粒,增加 ins 质感 */
+  .grain {
+    position: fixed;
+    inset: -50%;
+    pointer-events: none;
+    opacity: .06;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation: grain 6s steps(6) infinite;
+  }
+  @keyframes grain {
+    0%,100% { transform: translate(0,0); }
+    20% { transform: translate(-3%,2%); }
+    40% { transform: translate(2%,-3%); }
+    60% { transform: translate(-2%,-2%); }
+    80% { transform: translate(3%,1%); }
+  }
+
+  canvas { position: fixed; inset: 0; display: block; }
+
+  /* 文案 */
+  .caption {
+    position: fixed;
+    left: 0; right: 0;
+    bottom: max(9vh, env(safe-area-inset-bottom, 0px) + 7vh);
+    text-align: center;
+    color: #fff;
+    pointer-events: none;
+    user-select: none;
+  }
+  .caption h1 {
+    font-size: clamp(18px, 5.2vw, 30px);
+    font-weight: 300;
+    letter-spacing: .42em;
+    text-indent: .42em;
+    text-transform: uppercase;
+    opacity: .92;
+    text-shadow: 0 0 28px rgba(180,200,255,.35);
+  }
+  .caption p {
+    margin-top: 14px;
+    font-size: clamp(10px, 2.9vw, 13px);
+    font-weight: 300;
+    letter-spacing: .3em;
+    text-indent: .3em;
+    color: rgba(255,255,255,.42);
+  }
+  .caption i {
+    display: block;
+    width: 42px;
+    height: 1px;
+    margin: 18px auto 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+  }
+
+  /* 顶部小标签 */
+  .badge {
+    position: fixed;
+    top: max(4vh, env(safe-area-inset-top, 0px) + 3vh);
+    left: 0; right: 0;
+    text-align: center;
+    font-size: 10px;
+    letter-spacing: .34em;
+    text-indent: .34em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.3);
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /* 边框点缀 */
+  .frame {
+    position: fixed;
+    inset: 14px;
+    border: 1px solid rgba(255,255,255,.07);
+    pointer-events: none;
+  }
+
+  /* 许愿栏 */
+  .wishbar {
+    position: fixed;
+    left: 0; right: 0;
+    /* --kb 由 visualViewport 提供:软键盘顶起来时把整栏抬到键盘上方 */
+    bottom: calc(max(3.2vh, env(safe-area-inset-bottom, 0px) + 2.4vh) + var(--kb, 0px));
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    padding: 0 22px;
+  }
+  .wishbar input {
+    width: min(56vw, 290px);
+    padding: 10px 2px;
+    font: inherit;
+    font-size: clamp(11px, 3.1vw, 13px);
+    font-weight: 300;
+    letter-spacing: .22em;
+    text-indent: .22em;
+    text-align: center;
+    color: rgba(255,255,255,.88);
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid rgba(255,255,255,.13);
+    border-radius: 0;
+    outline: none;
+    transition: border-color .5s, box-shadow .5s;
+  }
+  .wishbar input::placeholder {
+    color: rgba(255,255,255,.24);
+    letter-spacing: .22em;
+  }
+  .wishbar input:focus {
+    border-bottom-color: rgba(186,206,255,.5);
+    box-shadow: 0 16px 32px -24px rgba(180,200,255,.9);
+  }
+  .wishbar button {
+    padding: 9px 15px 9px 18px;
+    font: inherit;
+    font-size: 10px;
+    font-weight: 300;
+    letter-spacing: .3em;
+    text-indent: .3em;
+    color: rgba(255,255,255,.58);
+    background: transparent;
+    border: 1px solid rgba(255,255,255,.13);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color .45s, border-color .45s, box-shadow .45s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .wishbar button:hover,
+  .wishbar button:focus-visible {
+    color: #fff;
+    border-color: rgba(186,206,255,.5);
+    box-shadow: 0 0 24px rgba(170,195,255,.22);
+  }
+
+  /* iOS:Safari 会把字号 < 16px 的输入框连页面一起放大,这里单独兜住 */
+  @supports (-webkit-touch-callout: none) {
+    .wishbar input { font-size: 16px; }
+  }
+
+  /* 飞向夜空的愿望 */
+  .wishfly {
+    position: fixed;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+    font-size: clamp(12px, 3.4vw, 15px);
+    font-weight: 300;
+    letter-spacing: .3em;
+    text-indent: .3em;
+    color: rgba(233,240,255,.95);
+    text-shadow: 0 0 22px rgba(170,195,255,.55), 0 0 60px rgba(150,180,255,.3);
+    pointer-events: none;
+    user-select: none;
+    will-change: transform, opacity, filter;
+  }
+</style>
+</head>
+<body>
+
+  <div class="sky"></div>
+  <canvas id="stage"></canvas>
+  <div class="grain"></div>
+  <div class="frame"></div>
+  <div class="badge">meteor * shower</div>
+
+  <div class="caption">
+    <h1>Meteor</h1>
+    <i></i>
+    <p>许愿要快一点</p>
+  </div>
+
+  <div class="wishbar">
+    <input id="wishInput" type="text" maxlength="20"
+           placeholder="写下你的愿望" autocomplete="off" spellcheck="false" />
+    <button id="wishSend" type="button">许愿</button>
+  </div>
+
+<script>
+(function () {
+  const canvas = document.getElementById('stage');
+  const ctx = canvas.getContext('2d');
+
+  let W = 0, H = 0, DPR = 1;
+  let stars = [];
+  let meteors = [];
+
+  const TAU = Math.PI * 2;
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const clamp01 = v => v < 0 ? 0 : (v > 1 ? 1 : v);
+  const smooth = t => t * t * (3 - 2 * t);
+
+  // 星空缓慢旋转:以画面外一点为轴心,极慢地转
+  const SKY = { angle: 0, speed: 0.0125 }; // 弧度/秒 ≈ 8 分钟一整圈
+
+  /* ---------- 尺寸 ---------- */
+  let lastW = -1;
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = W * DPR;
+    canvas.height = H * DPR;
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+    // iOS 地址栏收起/展开只改高度,不重铺星空,否则星星会「跳」一下
+    if (Math.abs(W - lastW) > 1 || stars.length === 0) buildStars();
+    lastW = W;
+
+    dust.length = 0;
+    meteors.length = 0;
+  }
+
+  /* ---------- 静态星空 ---------- */
+  // 星星存在"环绕画面中心的外扩坐标"里,便于整体旋转
+  function buildStars() {
+    // 半径覆盖外接圆,旋转时四角不露空
+    const Rmax = Math.hypot(W, H) * 0.62;
+    // 关键:星星铺满整个圆盘,数量必须按圆盘面积算(不是屏幕面积),
+    // 否则密度会被摊薄到 1/3 以下,屏幕上几乎看不到星点
+    const count = Math.round((Math.PI * Rmax * Rmax) / 5600);
+    stars = [];
+    for (let i = 0; i < count; i++) {
+      const bright = Math.random() < 0.045;   // 少量亮星带光晕,拉层次
+      stars.push({
+        // 极坐标:距中心距离 + 角度(均匀铺满圆盘)
+        d: Math.sqrt(Math.random()) * Rmax,
+        a: Math.random() * TAU,
+        // 每颗星略微不同的角速度 → 极轻微视差,不成刚体转盘
+        drift: rand(0.85, 1.12),
+        r: bright ? rand(1.05, 1.6) : rand(0.38, 1.05),
+        halo: bright,
+        // 呼吸闪烁
+        phase: Math.random() * TAU,
+        speed: rand(0.12, 0.5),
+        hue: Math.random() < 0.18 ? rand(190, 230) : 0
+      });
+    }
+  }
+
+  /* ---------- 流星 ---------- */
+  // 角度:统一朝左下/右下斜射,保持 ins 的干净构图
+  const ANGLE = Math.PI * 0.78; // 约 140°
+
+  function spawn(force) {
+    const big = force || Math.random() < 0.16;
+
+    const speed = big ? rand(7.8, 10.8) : rand(4.2, 7.2);
+    const len   = big ? rand(280, 460) : rand(90, 230);
+
+    const nx = Math.cos(ANGLE);
+    const ny = Math.sin(ANGLE);
+
+    // 出生点:整条流星(含尾梢)都在屏幕外,再从边缘自然划入
+    const back   = big ? W * 0.95 : W * 0.62;
+    const margin = len + 120;
+    const roll   = back + margin;                 // 入场前需要飞过的距离
+
+    const startX = rand(W * 0.10, W * 1.05);
+    const startY = rand(-H * 0.55, H * 0.62);
+
+    const x = startX - nx * roll;
+    const y = startY - ny * roll;
+
+    // 寿命按"总路程"折算(秒),而不是按帧数写死。
+    // 否则入场那一段路程就把寿命耗尽,流星还没进画面就消失了。
+    const cross = W * 1.35 + H * 0.85;            // 之后横穿画面的距离
+    const ttl = (roll + cross) / speed / 60;      // 存活秒数
+
+    meteors.push({
+      x, y,
+      nx, ny,
+      vx: nx * speed,
+      vy: ny * speed,
+      len,
+      width: big ? rand(2.0, 2.9) : rand(0.9, 1.7),
+      ttl,
+      life: 1,
+      // 头部颜色:冷白 → 淡蓝紫
+      hue: big ? rand(200, 225) : rand(195, 235),
+      glow: big ? 1 : 0.55,
+      seed: Math.random() * TAU
+    });
+  }
+
+  let spawnTimer = 0;
+  let nextSpawn = 0.7;
+
+  /* ---------- 流星甩出的星尘 ---------- */
+  const dust = [];
+
+  /* ---------- 绘制单颗流星 ---------- */
+  function drawMeteor(m) {
+    const a = clamp01(m.life);
+    const nx = m.nx, ny = m.ny;
+
+    const hx = m.x, hy = m.y;
+    const tx = hx - nx * m.len, ty = hy - ny * m.len;
+
+    ctx.lineCap = 'round';
+
+    // ① 外层光鞘:整条尾迹罩一层很淡的宽线,做出"空气被点亮"的体积感
+    const sheath = ctx.createLinearGradient(tx, ty, hx, hy);
+    sheath.addColorStop(0,    `hsla(${m.hue}, 100%, 88%, 0)`);
+    sheath.addColorStop(0.45, `hsla(${m.hue}, 100%, 86%, ${0.05 * a})`);
+    sheath.addColorStop(1,    `hsla(${m.hue}, 100%, 95%, ${0.20 * a})`);
+    ctx.strokeStyle = sheath;
+    ctx.lineWidth = m.width * (m.glow ? 5.2 : 3.6);
+    ctx.beginPath();
+    ctx.moveTo(tx, ty);
+    ctx.lineTo(hx, hy);
+    ctx.stroke();
+
+    // ② 主体:分段收缩 —— 头粗尾细、头白尾蓝,形成真正的彗尾
+    const SEG = 18;
+    for (let i = 0; i < SEG; i++) {
+      const t0 = i / SEG, t1 = (i + 1) / SEG;
+      const tm = (t0 + t1) * 0.5;                 // 0 = 头部,1 = 尾梢
+
+      const x0 = hx - nx * m.len * t0, y0 = hy - ny * m.len * t0;
+      const x1 = hx - nx * m.len * t1, y1 = hy - ny * m.len * t1;
+
+      const bright = Math.min(1, 0.14 + 0.86 * Math.pow(1 - tm, 1.45));
+      const w = m.width * (0.28 + 0.72 * Math.pow(1 - tm, 0.7));
+
+      ctx.strokeStyle =
+        `hsla(${m.hue + (1 - tm) * 8}, 100%, ${86 + 11 * (1 - tm)}%, ${bright * a})`;
+      ctx.lineWidth = w;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+    }
+
+    // ③ 头后方一小段"高热段",让头部亮得有来源
+    const hl = m.len * 0.18;
+    const hot = ctx.createLinearGradient(hx - nx * hl, hy - ny * hl, hx, hy);
+    hot.addColorStop(0, `hsla(${m.hue}, 100%, 92%, 0)`);
+    hot.addColorStop(1, `hsla(${m.hue + 14}, 100%, 99%, ${0.92 * a})`);
+    ctx.strokeStyle = hot;
+    ctx.lineWidth = m.width * 0.9;
+    ctx.beginPath();
+    ctx.moveTo(hx - nx * hl, hy - ny * hl);
+    ctx.lineTo(hx, hy);
+    ctx.stroke();
+
+    // ④ 头部光核(炫光仍是缩小 60% 后的尺寸,带轻微闪烁)
+    const flicker = 0.88 + 0.12 * Math.sin(time * 24 + m.seed);
+    const r = m.width * (m.glow ? 1.4 : 0.95) * flicker;
+    const haloR = r * 6;
+
+    const halo = ctx.createRadialGradient(hx, hy, 0, hx, hy, haloR);
+    halo.addColorStop(0,    `hsla(${m.hue}, 100%, 99%, ${0.95 * a})`);
+    halo.addColorStop(0.18, `hsla(${m.hue}, 100%, 92%, ${0.55 * a})`);
+    halo.addColorStop(0.45, `hsla(${m.hue}, 100%, 84%, ${0.18 * a})`);
+    halo.addColorStop(1,    `hsla(${m.hue}, 100%, 80%, 0)`);
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(hx, hy, haloR, 0, TAU);
+    ctx.fill();
+
+    // 头部实心高光
+    ctx.fillStyle = `rgba(255,255,255,${0.98 * a})`;
+    ctx.beginPath();
+    ctx.arc(hx, hy, r * 0.72, 0, TAU);
+    ctx.fill();
+
+    // ⑤ 大流星的柔光雾
+    if (m.glow) {
+      const mistR = 40;
+      const mist = ctx.createRadialGradient(hx, hy, 0, hx, hy, mistR);
+      mist.addColorStop(0, `hsla(${m.hue}, 100%, 82%, ${0.07 * a})`);
+      mist.addColorStop(1, 'hsla(220,100%,80%,0)');
+      ctx.fillStyle = mist;
+      ctx.beginPath();
+      ctx.arc(hx, hy, mistR, 0, TAU);
+      ctx.fill();
+    }
+  }
+
+  /* ---------- 主循环 ---------- */
+  let last = performance.now();
+  let time = 0;
+
+  function loop(now) {
+    const dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
+    time += dt;
+
+    // 拖影:让轨迹有柔和的余晖
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(0,0,0,0.26)';
+    ctx.fillRect(0, 0, W, H);
+
+    // 星星(呼吸 + 缓慢环绕旋转)
+    SKY.angle += SKY.speed * dt;
+    const cx = W / 2, cy = H / 2;
+
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < stars.length; i++) {
+      const s = stars[i];
+      const ang = s.a + SKY.angle * s.drift;
+      const d = s.d + Math.sin(time * 0.06 + s.phase) * 6; // 极轻微呼吸位移
+      const px = cx + Math.cos(ang) * d;
+      const py = cy + Math.sin(ang) * d;
+
+      // 超出外接圆的星点不画,省开销
+      if (px < -20 || px > W + 20 || py < -20 || py > H + 20) continue;
+
+      // 边缘柔化:避免旋转到画面外的星星硬切
+      const edge = Math.min(px, W - px, py, H - py);
+      const fadeIn = edge < 60 ? clamp01(smooth(edge / 60)) : 1;
+
+      // 闪烁:下限抬高,保证星点始终"看得见"
+      const tw = 0.58 + 0.42 * (0.5 + 0.5 * Math.sin(time * s.speed + s.phase));
+      const alpha = tw * fadeIn;
+
+      // 亮星:额外一层柔光,做出景深
+      if (s.halo) {
+        const sr = s.r * 7;
+        const g = ctx.createRadialGradient(px, py, 0, px, py, sr);
+        g.addColorStop(0, `hsla(${s.hue || 210}, 70%, 97%, ${0.45 * alpha})`);
+        g.addColorStop(1, `hsla(${s.hue || 210}, 70%, 90%, 0)`);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(px, py, sr, 0, TAU);
+        ctx.fill();
+      }
+
+      const col = s.hue
+        ? `hsla(${s.hue}, 85%, 90%, ${alpha})`
+        : `rgba(255,255,255,${alpha})`;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(px, py, s.r, 0, TAU);
+      ctx.fill();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+
+    // 生成流星
+    spawnTimer += dt;
+    if (spawnTimer >= nextSpawn) {
+      spawnTimer = 0;
+      nextSpawn = rand(0.45, 1.6);
+      // 偶尔一次性来两三颗
+      const group = Math.random() < 0.22 ? Math.round(rand(2, 3)) : 1;
+      for (let g = 0; g < group; g++) spawn();
+    }
+
+    // 更新 & 绘制
+    ctx.globalCompositeOperation = 'lighter';
+
+    // 尾尘:先推进已有粒子
+    for (let i = dust.length - 1; i >= 0; i--) {
+      const p = dust[i];
+      const k = dt * 60;
+      p.x += p.vx * k;
+      p.y += p.vy * k;
+      p.vx *= 0.985;
+      p.vy *= 0.985;
+      p.life -= p.fade * k;
+      if (p.life <= 0) { dust.splice(i, 1); continue; }
+
+      ctx.fillStyle = `hsla(${p.hue}, 100%, ${84 + 14 * p.life}%, ${0.6 * p.life})`;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * (0.5 + 0.5 * p.life), 0, TAU);
+      ctx.fill();
+    }
+
+    // 流星本体
+    for (let i = meteors.length - 1; i >= 0; i--) {
+      const m = meteors[i];
+      const k = dt * 60;
+
+      m.x += m.vx * k;
+      m.y += m.vy * k;
+      m.life -= dt / m.ttl;          // 按秒衰减,和帧率无关
+
+      // 头部与尾梢都在画面外 → 跳过绘制,省开销
+      const tx = m.x - m.nx * m.len, ty = m.y - m.ny * m.len;
+      const inView =
+        Math.max(m.x, tx) > -80 && Math.min(m.x, tx) < W + 80 &&
+        Math.max(m.y, ty) > -80 && Math.min(m.y, ty) < H + 80;
+
+      if (inView) {
+        drawMeteor(m);
+
+        // 头部甩出的星尘
+        if (dust.length < 240 && Math.random() < (m.glow ? 0.6 : 0.24) * k) {
+          dust.push({
+            x: m.x, y: m.y,
+            vx: m.vx * 0.12 + rand(-0.6, 0.6),
+            vy: m.vy * 0.12 + rand(-0.6, 0.6),
+            r: rand(0.35, 1.05),
+            life: 1,
+            fade: rand(0.02, 0.05),
+            hue: m.hue
+          });
+        }
+      }
+
+      // 只按"飞出去了 / 寿命到了"回收。
+      // 注意别用 m.x > W+固定值 判断:大流星出生点在屏幕右上方很远,
+      // 这样写会在出生的那一帧就被误删。
+      if (m.life <= 0 || m.x < -900 || m.y > H + 900) {
+        meteors.splice(i, 1);
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+
+    requestAnimationFrame(loop);
+  }
+
+  /* ---------- 许愿 ---------- */
+  // 发送愿望:文字升空 + 同时炸出一小波流星
+  function wishBurst() {
+    const n = Math.round(rand(3, 5));
+    for (let i = 0; i < n; i++) spawn(i === 0);   // 第一颗保证是大流星
+  }
+
+  const Wish = (() => {
+    const input = document.getElementById('wishInput');
+    const btn = document.getElementById('wishSend');
+
+    function fly(text) {
+      const r = input.getBoundingClientRect();
+      const el = document.createElement('div');
+      el.className = 'wishfly';
+      el.textContent = text;
+      el.style.left = (r.left + r.width / 2) + 'px';
+      el.style.top = (r.top + r.height / 2) + 'px';
+      document.body.appendChild(el);
+
+      const dx = rand(-70, 70);
+      const rise = rand(H * 0.45, H * 0.68);
+      const EASE = 'cubic-bezier(.25,.55,.3,1)';
+      const DUR = 2600;
+
+      // 老系统(iOS 13.4 以下)没有 Web Animations API,降级成纯 CSS 过渡
+      let anim = null;
+      try {
+        anim = el.animate([
+          { transform: 'translate(-50%,-50%) translate(0,0) scale(1)', opacity: 0, filter: 'blur(0px)' },
+          { transform: `translate(-50%,-50%) translate(${dx * 0.12}px, ${-rise * 0.14}px) scale(1.02)`,
+            opacity: 1, filter: 'blur(0px)', offset: 0.15 },
+          { transform: `translate(-50%,-50%) translate(${dx}px, ${-rise}px) scale(.4)`,
+            opacity: 0, filter: 'blur(2px)' }
+        ], { duration: DUR, easing: EASE, fill: 'forwards' });
+      } catch (err) { anim = null; }
+
+      if (anim) {
+        anim.onfinish = () => el.remove();
+      } else {
+        el.style.opacity = '0';
+        requestAnimationFrame(() => {
+          el.style.transition = `transform ${DUR}ms ${EASE}, opacity ${DUR}ms ease`;
+          el.style.opacity = '1';
+          el.style.transform =
+            `translate(-50%,-50%) translate(${dx * 0.12}px, ${-rise * 0.14}px) scale(1.02)`;
+          requestAnimationFrame(() => {
+            el.style.opacity = '0';
+            el.style.transform = `translate(-50%,-50%) translate(${dx}px, ${-rise}px) scale(.4)`;
+          });
+        });
+        setTimeout(() => el.remove(), DUR + 300);
+      }
+    }
+
+    function send() {
+      const text = input.value.trim();
+      if (!text) { input.focus(); return; }
+      input.value = '';
+      input.blur();
+      fly(text);
+      wishBurst();
+    }
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); send(); }
+    });
+    btn.addEventListener('click', send);
+
+    return { send };
+  })();
+
+  /* 软键盘:iOS 上 fixed 元素不会自动给键盘让位,靠 visualViewport 手动抬起 */
+  if (window.visualViewport) {
+    const vv = window.visualViewport;
+    const lift = () => {
+      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      document.documentElement.style.setProperty('--kb', kb + 'px');
+    };
+    vv.addEventListener('resize', lift);
+    vv.addEventListener('scroll', lift);
+    lift();
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
